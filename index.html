@@ -153,7 +153,10 @@
   <div id="stock" class="section active">
     <div class="card">
       <h2>รายการสินค้า / สต๊อก</h2>
-      <div class="small" style="margin-bottom:10px">เริ่มต้น + เติม − ขาย − ฟรี = ควรเหลือ · คอลัมน์ "คาด" แสดงสีแดงถ้าไม่ตรง</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div class="small">เริ่มต้น + เติม − ขาย − ฟรี = ควรเหลือ · คาด แสดงสีแดงถ้าไม่ตรง</div>
+        <button onclick="loadPrevLeft()" class="secondary" style="width:auto;padding:8px 14px;margin:0;font-size:13px;white-space:nowrap">📥 โหลดยอดจากกะก่อน</button>
+      </div>
       <div id="stockList"></div>
       <div class="pill">ยอดขายจากสินค้า: <span class="big green" id="stockSales">฿0</span></div>
       <button class="secondary" onclick="resetStock()" style="margin-top:10px">ล้างจำนวนสินค้า</button>
@@ -406,6 +409,24 @@ function loadStockDraft(){
 function clearDraft(){
   localStorage.removeItem(DRAFT_KEY);
   localStorage.removeItem(DRAFT_CASH_KEY);
+}
+
+// โหลดยอดเหลือจากกะก่อนมาใส่ช่อง "เริ่ม"
+function loadPrevLeft(){
+  const snap=JSON.parse(localStorage.getItem('lucky_prev_left')||'{}');
+  if(!Object.keys(snap).length){
+    alert('ยังไม่มีข้อมูลกะก่อนหน้า\nบันทึกกะแรกก่อนแล้วค่อยใช้ฟีเจอร์นี้');
+    return;
+  }
+  if(!confirm('นำยอดเหลือจากกะก่อนมาใส่ช่อง "เริ่ม" ทั้งหมด?')) return;
+  // ล้างช่องเริ่มก่อน แล้วใส่ค่าใหม่
+  products.forEach((p,i)=>{
+    const el=document.getElementById('start'+i);
+    if(el) el.value=snap[i]||'';
+  });
+  saveStockDraft();
+  calc();
+  alert('โหลดยอดเหลือจากกะก่อนเรียบร้อย ✅');
 }
 
 function stockSummary(){
@@ -668,6 +689,15 @@ const GAS_URL='https://script.google.com/macros/s/AKfycbyBKVYjFivdnV33pM6a54zc60
 async function saveShift(){
   const t=calc();
   const record={...t,createdAt:new Date().toLocaleString('th-TH')};
+
+  // บันทึก "เหลือจริง" ของแต่ละ SKU ไว้ใช้เป็น "เริ่ม" ของกะถัดไป
+  const leftSnapshot={};
+  products.forEach((p,i)=>{
+    const v=document.getElementById('left'+i)?.value;
+    if(v!==''&&v!==undefined) leftSnapshot[i]=v;
+  });
+  localStorage.setItem('lucky_prev_left',JSON.stringify(leftSnapshot));
+
   // บันทึก localStorage ก่อน (offline backup)
   records.push(record);
   localStorage.setItem('lucky_shift_stock_records',JSON.stringify(records));
