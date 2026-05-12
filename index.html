@@ -325,23 +325,23 @@ function renderStock(){
         <div class="stock-inputs">
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-start">🔵 เริ่ม</div>
-            <input id="start${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+            <input id="start${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc();saveStockDraft()">
           </div>
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-add">🟢 เติม</div>
-            <input id="add${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+            <input id="add${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc();saveStockDraft()">
           </div>
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-sell">🟠 ขาย</div>
-            <input id="sold${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+            <input id="sold${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc();saveStockDraft()">
           </div>
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-free">🟣 ฟรี</div>
-            <input id="bad${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+            <input id="bad${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc();saveStockDraft()">
           </div>
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-left">🟡 เหลือจริง</div>
-            <input id="left${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+            <input id="left${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc();saveStockDraft()">
           </div>
           <div class="stock-input-wrap">
             <div class="stock-input-label lbl-exp">คาดว่าเหลือ</div>
@@ -354,6 +354,59 @@ function renderStock(){
   box.innerHTML=html;
 }
 renderStock();
+
+// ── Draft: บันทึกข้อมูลกรอกค้างไว้ ไม่หายตอนปิด tab ──
+const DRAFT_KEY='lucky_stock_draft';
+const DRAFT_CASH_KEY='lucky_cash_draft';
+
+function saveStockDraft(){
+  const draft={};
+  products.forEach((p,i)=>{
+    ['start','add','sold','bad','left'].forEach(k=>{
+      const v=document.getElementById(k+i)?.value;
+      if(v) draft[k+i]=v;
+    });
+  });
+  // เงินทอน เปิด/ปิดกะ
+  const bills=[1000,500,100,50,20,10,5,2,1];
+  const cash={};
+  bills.forEach(b=>{
+    ['o','c'].forEach(p=>{
+      const v=document.getElementById(p+b)?.value;
+      if(v) cash[p+b]=v;
+    });
+  });
+  // ข้อมูลอื่น
+  cash.date=document.getElementById('date')?.value||'';
+  cash.staff=document.getElementById('staff')?.value||'';
+  cash.cashIncome=document.getElementById('cashIncome')?.value||'';
+  cash.expense=document.getElementById('expense')?.value||'';
+  cash.posCash=document.getElementById('posCash')?.value||'';
+  cash.posTransfer=document.getElementById('posTransfer')?.value||'';
+  cash.posGrand=document.getElementById('posGrand')?.value||'';
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(draft));
+  localStorage.setItem(DRAFT_CASH_KEY,JSON.stringify(cash));
+}
+
+function loadStockDraft(){
+  try{
+    const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}');
+    Object.entries(draft).forEach(([k,v])=>{
+      const el=document.getElementById(k);
+      if(el) el.value=v;
+    });
+    const cash=JSON.parse(localStorage.getItem(DRAFT_CASH_KEY)||'{}');
+    Object.entries(cash).forEach(([k,v])=>{
+      const el=document.getElementById(k);
+      if(el) el.value=v;
+    });
+  }catch(e){}
+}
+
+function clearDraft(){
+  localStorage.removeItem(DRAFT_KEY);
+  localStorage.removeItem(DRAFT_CASH_KEY);
+}
 
 function stockSummary(){
   let sales=0,mismatch=0,issue=[],details=[];
@@ -604,7 +657,10 @@ function calc(){
 }
 
 function resetStock(){
-  if(confirm('ล้างจำนวนสินค้าในหน้านี้?'))products.forEach((p,i)=>['start','add','sold','bad','left'].forEach(k=>document.getElementById(k+i).value=''));
+  if(confirm('ล้างจำนวนสินค้าในหน้านี้?')){
+    products.forEach((p,i)=>['start','add','sold','bad','left'].forEach(k=>document.getElementById(k+i).value=''));
+    clearDraft();
+  }
   calc();
 }
 const GAS_URL='https://script.google.com/macros/s/AKfycbyBKVYjFivdnV33pM6a54zc60Ukgu-LyRR_6FsH3Z68KmH7u-N3QN8BN9mxPsVipHIxzQ/exec';
@@ -627,7 +683,7 @@ async function saveShift(){
     });
     const json=await res.json();
     if(json.ok){
-      alert('บันทึกเรียบร้อย ✅ ข้อมูลขึ้น Google Sheets แล้ว');
+      clearDraft();alert('บันทึกเรียบร้อย ✅ ข้อมูลขึ้น Google Sheets แล้ว');
     } else {
       alert('บันทึก local แล้ว แต่ online ล้มเหลว: '+JSON.stringify(json));
     }
@@ -941,6 +997,8 @@ function changePin(){
 }
 
 renderHistory();calc();
+loadStockDraft();
+calc();
 </script>
 </body>
 </html>
