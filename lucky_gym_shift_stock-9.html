@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucky Gym Shift Stock OCR</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root{--green:#BBDF32;--black:#090909;--card:#151515;--muted:#929292;--red:#ff5b5b;--blue:#5ba8ff;--white:#f8f8f8;--orange:#ffaa33;--purple:#cc88ff}
+    *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{margin:0;background:var(--black);color:var(--white);padding:12px}
+    .app{max-width:980px;margin:0 auto}
+    h1{font-size:24px;margin:0} h2{font-size:18px;margin:4px 0 12px} h3{font-size:15px;margin:8px 0 8px;color:#ccc}
+    .logo{color:var(--green)} .sub{color:var(--muted);font-size:13px;margin-top:4px}
+    .card{background:var(--card);border:1px solid #292929;border-radius:18px;padding:14px;margin-bottom:12px}
+    label{display:block;color:#ddd;font-size:13px;margin-bottom:6px}
+    input,textarea,select{width:100%;padding:11px;border-radius:12px;border:1px solid #333;background:#050505;color:white;font-size:15px}
+    textarea{min-height:110px}
+    button{border:0;border-radius:14px;background:var(--green);color:#111;font-size:15px;font-weight:800;padding:12px;width:100%;cursor:pointer;margin-top:8px}
+    button.secondary{background:#252525;color:#fff;border:1px solid #444}
+    button.owner-btn{background:#3a1a6e;color:#cc88ff;border:1px solid #6633aa}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .money-row{display:grid;grid-template-columns:70px 1fr 95px;gap:8px;align-items:end;margin-bottom:8px}
+    .pill{background:#222;border:1px solid #333;border-radius:14px;padding:10px}
+    .big{font-size:23px;font-weight:900}
+    .green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.orange{color:var(--orange)}.purple{color:var(--purple)}
+    .tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}
+    .tabs button{font-size:12px;padding:10px;background:#202020;color:#eee;margin-top:0}
+    .tabs button.active{background:var(--green);color:#111}
+    .tabs button.owner-tab{background:#1a0a2e;color:#cc88ff;border:1px solid #441177}
+    .tabs button.owner-tab.active{background:#6633aa;color:#fff}
+    .section{display:none}.section.active{display:block}
+    .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .item{background:#101010;border:1px solid #2b2b2b;border-radius:14px;padding:12px}
+    .item.alert-red{border-color:#ff5b5b;background:#1a0505}
+    .item.alert-ok{border-color:#BBDF32;background:#0d1a03}
+    .item.alert-warn{border-color:#ffaa33;background:#1a1000}
+    .small{font-size:12px;color:var(--muted)}
+    .list-row{display:grid;grid-template-columns:90px 1fr 105px 42px;gap:8px;margin-bottom:8px}
+    .x{background:#333;color:#fff;padding:0;margin-top:0}
+    .warn{padding:14px;border-radius:16px;margin-top:10px;font-weight:800;text-align:center}
+    .ok{background:#263b13;color:#dfff8c}.bad{background:#451414;color:#ffd0d0}.more{background:#122c45;color:#d0e8ff}
+    img.preview{max-width:100%;border-radius:14px;border:1px solid #333;margin-top:8px}
+    .stock-head,.stock-row{display:grid;grid-template-columns:1.5fr 55px 55px 55px 55px 55px 75px 75px;gap:5px;align-items:center}
+    .stock-head{font-size:11px;color:#aaa;margin-bottom:6px}
+    .stock-row{margin-bottom:5px}
+    .stock-row input{padding:8px;font-size:13px}
+    .stock-row.mismatch-row{background:#1a0808;border-radius:10px;padding:2px 4px}
+    .stock-row.mismatch-row input{border-color:#ff5b5b55}
+    .expected-badge{font-size:12px;border-radius:8px;padding:4px 6px;text-align:center;font-weight:700}
+    .expected-ok{background:#1a3a08;color:#BBDF32}
+    .expected-bad{background:#3a0808;color:#ff8888}
+    .cat{background:#222;border:1px solid #333;border-radius:12px;padding:8px;margin:12px 0 8px;font-weight:800;color:var(--green)}
+    .diag-section{margin-bottom:16px}
+    .diag-title{font-size:13px;font-weight:800;color:#cc88ff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .diag-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-radius:12px;margin-bottom:6px;font-size:14px;gap:8px}
+    .diag-ok{background:#0d1a03;border:1px solid #3a5a10}
+    .diag-bad{background:#1a0505;border:1px solid #5a1010}
+    .diag-warn{background:#1a1000;border:1px solid #5a3a00}
+    .diag-icon{font-size:18px;flex-shrink:0;margin-top:2px}
+    .diag-label{color:#ccc;flex:1}
+    .diag-val{font-weight:800;min-width:100px;text-align:right;flex-shrink:0}
+    .insight-box{border-radius:14px;padding:14px;margin-bottom:10px}
+    .insight-red{background:#2a0808;border:1px solid #aa2222}
+    .insight-warn{background:#1a1200;border:1px solid #aa7700}
+    .insight-ok{background:#0a1a04;border:1px solid #448822}
+    .insight-title{font-size:14px;font-weight:800;margin-bottom:6px}
+    .insight-body{font-size:13px;color:#ccc;line-height:1.6;padding:0;margin:0;list-style:none}
+    .insight-body li{margin-bottom:4px;padding-left:16px;position:relative}
+    .insight-body li:before{content:"→";position:absolute;left:0;color:#888}
+    .stock-issue-list{margin-top:8px}
+    .stock-issue-item{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:6px;padding:8px 10px;border-radius:10px;background:#0f0505;border:1px solid #3a1010;margin-bottom:6px;font-size:13px}
+    .si-name{font-weight:700;color:#ffaaaa}
+    .si-label{font-size:11px;color:#888}
+    .si-val{font-weight:700}
+    .flow-grid{display:grid;grid-template-columns:1fr 30px 1fr 30px 1fr;gap:8px;align-items:center;margin-bottom:14px}
+    .flow-box{background:#101010;border:1px solid #2b2b2b;border-radius:12px;padding:10px;text-align:center}
+    .flow-box.highlight{border-color:#ffaa33}
+    .flow-arrow{color:#555;font-size:18px;text-align:center}
+    .flow-val{font-size:18px;font-weight:900}
+    .flow-lbl{font-size:11px;color:#888;margin-top:2px}
+    .history-item{background:#101010;border:1px solid #2b2b2b;border-radius:14px;padding:12px;margin-bottom:8px}
+    .history-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .badge{font-size:11px;padding:3px 8px;border-radius:8px;font-weight:700}
+    .badge-ok{background:#1a3a08;color:#BBDF32}
+    .badge-bad{background:#3a0808;color:#ff8888}
+    .badge-warn{background:#3a2200;color:#ffbb55}
+    .pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;display:flex;align-items:center;justify-content:center}
+    .pin-box{background:#151515;border:1px solid #444;border-radius:20px;padding:28px 24px;width:300px;text-align:center}
+    .pin-dots{display:flex;justify-content:center;gap:12px;margin:20px 0}
+    .pin-dot{width:14px;height:14px;border-radius:50%;background:#333;transition:.15s}
+    .pin-dot.filled{background:var(--purple)}
+    .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+    .pin-key{background:#222;border:1px solid #444;border-radius:14px;padding:16px;font-size:20px;font-weight:800;cursor:pointer;color:white;margin-top:0}
+    .pin-key:hover{background:#333}
+    .pin-error{color:var(--red);font-size:13px;height:18px;margin-top:4px}
+    @media(max-width:760px){
+      .summary,.grid,.grid3{grid-template-columns:1fr}
+      .tabs{grid-template-columns:repeat(3,1fr)}
+      .list-row{grid-template-columns:1fr 1fr}
+      .stock-head{display:none}
+      .stock-row{grid-template-columns:1fr 55px 55px 55px}
+      .stock-row .name-cell{grid-column:1/5}
+      .x{height:43px}
+      .flow-grid{grid-template-columns:1fr}
+      .flow-arrow{display:none}
+      .stock-issue-item{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1><span class="logo">Lucky Gym</span> Shift + Stock</h1>
+        <div class="sub">บันทึกกะ + สต๊อก + OCR SMS + รายงานเจ้าของ</div>
+      </div>
+      <button class="owner-btn" style="width:auto;padding:10px 18px;font-size:13px;margin-top:0" onclick="openOwnerView()">👑 มุมมองเจ้าของ</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div><label>วันที่</label><input id="date" type="date"></div>
+      <div><label>ชื่อพนักงาน</label><input id="staff" placeholder="ชื่อพนักงาน"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('stock',this)">สินค้า</button>
+    <button class="tab" onclick="showTab('open',this)">เปิดกะ</button>
+    <button class="tab" onclick="showTab('pos',this)">POS/โอน</button>
+    <button class="tab" onclick="showTab('close',this)">ปิดกะ</button>
+    <button class="tab" onclick="showTab('sum',this)">สรุป</button>
+    <button class="tab owner-tab" onclick="openOwnerView()">👑 เจ้าของ</button>
+  </div>
+
+  <!-- STOCK -->
+  <div id="stock" class="section active">
+    <div class="card">
+      <h2>รายการสินค้า / สต๊อก</h2>
+      <div class="small" style="margin-bottom:10px">เริ่มต้น + เติม − ขาย − ฟรี = ควรเหลือ · คอลัมน์ "คาด" แสดงสีแดงถ้าไม่ตรง</div>
+      <div id="stockList"></div>
+      <div class="pill">ยอดขายจากสินค้า: <span class="big green" id="stockSales">฿0</span></div>
+      <button class="secondary" onclick="resetStock()" style="margin-top:10px">ล้างจำนวนสินค้า</button>
+    </div>
+  </div>
+
+  <!-- OPEN -->
+  <div id="open" class="section">
+    <div class="card">
+      <h2>เงินทอนเปิดกะ</h2>
+      <div id="openCash"></div>
+      <div class="pill">รวมเงินเปิดกะ: <span class="big green" id="openTotal">฿0</span></div>
+    </div>
+  </div>
+
+  <!-- POS -->
+  <div id="pos" class="section">
+    <div class="card">
+      <h2>ยอดจาก POS</h2>
+      <div class="grid3">
+        <div><label>POS เงินสด</label><input id="posCash" type="number" oninput="calc()" placeholder="0"></div>
+        <div><label>POS โอน</label><input id="posTransfer" type="number" oninput="calc()" placeholder="0"></div>
+        <div><label>POS รวม</label><input id="posGrand" type="number" oninput="calc()" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>อ่านยอดโอน QR / SMS</h2>
+      <div style="background:#0a1a00;border:1px solid #2a4a00;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#aaddaa;line-height:1.7">
+        <b style="color:#BBDF32">วิธีที่เร็วที่สุด:</b> copy ข้อความ SMS ทีละหลายๆ อัน วางรวมกันใน box แล้วกด "แยกยอด" — รายการที่อ่านแล้วจะ<b>สะสมไว้</b> ไม่หายเมื่ออ่านเพิ่ม<br>
+        <span style="color:#667744">รองรับ: 100.00 บ.จากKTB ... 12/05@18:19</span>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <label style="margin:0;flex-shrink:0">อัปโหลดรูป (OCR):</label>
+        <input id="smsImage" type="file" accept="image/*" multiple style="flex:1;min-width:0" onchange="previewImage(event)">
+        <button class="secondary" onclick="readSmsImages()" style="width:auto;padding:9px 14px;margin:0;white-space:nowrap">อ่านรูป</button>
+      </div>
+      <div id="imgQueue" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <div class="small" id="ocrStatus" style="margin-bottom:8px">ยังไม่ได้อ่านรูป</div>
+
+      <label>วางข้อความ SMS (รองรับหลายรายการพร้อมกัน)</label>
+      <textarea id="ocrText" placeholder="100.00 บ.จากKTB X019001 ชำระผ่านQR เข้า04735... 12/05@18:19&#10;90.00 บ.จากSCB X607752 ชำระผ่านQR เข้า04735... 12/05@18:25" style="font-size:13px;min-height:90px"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button onclick="parseText()" style="flex:2">แยกยอด (สะสม)</button>
+        <button class="secondary" onclick="clearTransfers()" style="flex:1">ล้างทั้งหมด</button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:6px">
+        <h3 style="margin:0">รายการโอนที่อ่านได้ <span id="transferCount" style="color:#BBDF32;font-size:13px"></span></h3>
+        <button class="secondary" onclick="addTransferRow()" style="width:auto;padding:6px 12px;margin:0;font-size:12px">+ เพิ่มเอง</button>
+      </div>
+      <div id="transferRows"></div>
+      <div class="pill" style="margin-top:10px">รวมยอดโอน: <span class="big green" id="smsTotal">฿0</span></div>
+    </div>
+    <div class="card">
+      <h2>เงินสด / รายจ่าย</h2>
+      <div class="grid">
+        <div><label>เงินสดรับจริง</label><input id="cashIncome" type="number" oninput="calc()" placeholder="0"></div>
+        <div><label>รายจ่ายเงินสด</label><input id="expense" type="number" oninput="calc()" placeholder="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOSE -->
+  <div id="close" class="section">
+    <div class="card">
+      <h2>เงินสดปิดกะที่นับจริง</h2>
+      <div id="closeCash"></div>
+      <div class="pill">รวมเงินปิดกะ: <span class="big green" id="closeTotal">฿0</span></div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="sum" class="section">
+    <div class="card">
+      <h2>สรุปปิดกะ</h2>
+      <div class="summary">
+        <div class="item"><div class="small">ยอดขายจากสินค้า</div><div class="big" id="sStock">฿0</div></div>
+        <div class="item"><div class="small">ยอดโอน OCR</div><div class="big" id="sTransfer">฿0</div></div>
+        <div class="item"><div class="small">เงินสดรับจริง</div><div class="big" id="sCash">฿0</div></div>
+        <div class="item"><div class="small">POS รวม</div><div class="big" id="sPOS">฿0</div></div>
+        <div class="item"><div class="small">เงินเปิดกะ</div><div class="big" id="sOpen">฿0</div></div>
+        <div class="item"><div class="small">รายจ่ายเงินสด</div><div class="big" id="sExpense">฿0</div></div>
+        <div class="item"><div class="small">เงินสดที่ควรมี</div><div class="big" id="sExpected">฿0</div></div>
+        <div class="item"><div class="small">เงินสดนับจริง</div><div class="big" id="sClose">฿0</div></div>
+        <div class="item" id="item-cashdiff"><div class="small">ผลต่างเงินสด</div><div class="big" id="sDiff">฿0</div></div>
+        <div class="item" id="item-posdiff"><div class="small">ผลต่าง POS รวม</div><div class="big" id="sPosDiff">฿0</div></div>
+        <div class="item" id="item-stockdiff"><div class="small">ผลต่างสินค้า vs POS</div><div class="big" id="sStockDiff">฿0</div></div>
+      </div>
+      <div id="status" class="warn ok">กรอกข้อมูลเพื่อสรุปผล</div>
+      <button onclick="saveShift()" style="margin-top:12px">บันทึกกะนี้</button>
+      <button class="secondary" onclick="downloadCSV()">ดาวน์โหลดรายงาน CSV</button>
+      <button class="owner-btn" onclick="openOwnerView()" style="margin-top:8px">👑 ดูรายงานเจ้าของ</button>
+    </div>
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">ประวัติกะที่บันทึก</h2><button id="loadOnlineBtn" class="secondary" onclick="loadOnlineHistory()" style="width:auto;padding:8px 14px;margin:0;font-size:13px">โหลดประวัติออนไลน์</button></div><div id="history">ยังไม่มีข้อมูล</div></div>
+  </div>
+
+  <!-- OWNER -->
+  <div id="owner" class="section">
+    <div id="ownerContent"></div>
+  </div>
+
+</div>
+
+<!-- PIN OVERLAY -->
+<div class="pin-overlay" id="pinOverlay" style="display:none">
+  <div class="pin-box">
+    <h2 style="margin-bottom:4px">🔐 มุมมองเจ้าของ</h2>
+    <div class="small">กรอก PIN 4 หลักเพื่อเข้าถึง</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key secondary" onclick="pinClear()" style="font-size:13px">ล้าง</button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key secondary" onclick="closePinOverlay()" style="font-size:13px">ยกเลิก</button>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+    <div class="small" style="margin-top:8px;color:#444">PIN เริ่มต้น: 1234</div>
+  </div>
+</div>
+
+<script>
+const products=[{"cat": "เครื่องดื่ม", "name": "น้ำเปล่า เล็ก", "price": 10}, {"cat": "เครื่องดื่ม", "name": "น้ำเปล่า ใหญ่", "price": 15}, {"cat": "เครื่องดื่ม", "name": "น้ำแร่ เล็ก", "price": 15}, {"cat": "เครื่องดื่ม", "name": "น้ำแร่ ใหญ่", "price": 25}, {"cat": "เครื่องดื่ม", "name": "เกลือแร่ยันฮี", "price": 15}, {"cat": "เครื่องดื่ม", "name": "เกเตอเรด ฟ้า", "price": 20}, {"cat": "เครื่องดื่ม", "name": "เกเตอเรด เหลือง", "price": 20}, {"cat": "เครื่องดื่ม", "name": "เกเตอเรด องุ่น", "price": 30}, {"cat": "เครื่องดื่ม", "name": "เกเตอเรด สตรอ", "price": 30}, {"cat": "เครื่องดื่ม", "name": "โค้ก zero", "price": 17}, {"cat": "เครื่องดื่ม", "name": "โค้ก original", "price": 17}, {"cat": "เครื่องดื่ม", "name": "ชเวป", "price": 17}, {"cat": "เครื่องดื่ม", "name": "ชเวป zero", "price": 17}, {"cat": "เครื่องดื่ม", "name": "แฟนต้า แดง", "price": 17}, {"cat": "เครื่องดื่ม", "name": "แฟนต้า ส้ม", "price": 17}, {"cat": "เครื่องดื่ม", "name": "แฟนต้า เขียว", "price": 17}, {"cat": "เครื่องดื่ม", "name": "ยันฮี", "price": 20}, {"cat": "เครื่องดื่ม", "name": "มินิทเมด", "price": 20}, {"cat": "เครื่องดื่ม", "name": "ลิปตัน", "price": 15}, {"cat": "เครื่องดื่ม", "name": "นมไฮโปรตีน", "price": 50}, {"cat": "เครื่องดื่ม", "name": "อกไก่ปั่น LF", "price": 110}, {"cat": "เครื่องดื่ม", "name": "อกไก่ปั่น max", "price": 100}, {"cat": "เครื่องดื่ม", "name": "โทฟูซัง", "price": 45}, {"cat": "เครื่องดื่ม", "name": "Benefitt", "price": 50}, {"cat": "เครื่องดื่ม", "name": "น้ำมะพร้าว", "price": 30}, {"cat": "ขนม/อื่นๆ", "name": "โอ๊ตผลไม้", "price": 45}, {"cat": "ขนม/อื่นๆ", "name": "กล้วยหอม", "price": 10}, {"cat": "ขนม/อื่นๆ", "name": "ป็อกกี้", "price": 10}, {"cat": "ขนม/อื่นๆ", "name": "ทาโร่", "price": 25}, {"cat": "ขนม/อื่นๆ", "name": "Julies", "price": 10}, {"cat": "ขนม/อื่นๆ", "name": "การาโนล่า", "price": 15}, {"cat": "ขนม/อื่นๆ", "name": "ขนมข้าวกล้องอบ", "price": 30}, {"cat": "ขนม/อื่นๆ", "name": "หงส์ไทย", "price": 40}, {"cat": "ขนม/อื่นๆ", "name": "หงส์ไทยหลอด", "price": 35}, {"cat": "ขนม/อื่นๆ", "name": "ยาดม โป๊ยเซียน", "price": 30}, {"cat": "ขนม/อื่นๆ", "name": "ยาดม ครูเฟิร์น", "price": 89}, {"cat": "ขนม/อื่นๆ", "name": "เวย์ ผง", "price": 45}, {"cat": "ขนม/อื่นๆ", "name": "ถุงเท้า", "price": 30}, {"cat": "ขนม/อื่นๆ", "name": "ไอติม โมจิ", "price": 40}, {"cat": "ขนม/อื่นๆ", "name": "ไอติม 80ml", "price": 45}, {"cat": "ขนม/อื่นๆ", "name": "เสื้อกันฝน", "price": 30}, {"cat": "ค่าสมาชิก/บริการ", "name": "รายวันผู้ใหญ่", "price": 90}, {"cat": "ค่าสมาชิก/บริการ", "name": "รายวันเด็ก", "price": 70}, {"cat": "ค่าสมาชิก/บริการ", "name": "รายเดือน เก่า", "price": 950}, {"cat": "ค่าสมาชิก/บริการ", "name": "รายเดือน ใหม่", "price": 950}, {"cat": "ค่าสมาชิก/บริการ", "name": "รายเดือน เทรนเนอร์", "price": 800}, {"cat": "ค่าสมาชิก/บริการ", "name": "ราย 3 เดือน โปรปืนนวด", "price": 2850}, {"cat": "ค่าสมาชิก/บริการ", "name": "ราย 6 เดือน", "price": 5700}, {"cat": "ค่าสมาชิก/บริการ", "name": "ราย 1 ปี", "price": 11400}, {"cat": "ค่าสมาชิก/บริการ", "name": "ผ้าขนหนูS", "price": 20}, {"cat": "ค่าสมาชิก/บริการ", "name": "ผ้าขนหนูL", "price": 30}, {"cat": "ค่าสมาชิก/บริการ", "name": "เครื่องชั่ง", "price": 50}];
+const bills=[1000,500,100,50,20,10,5,2,1];
+let records=JSON.parse(localStorage.getItem('lucky_shift_stock_records')||'[]');
+let ownerPin=localStorage.getItem('lucky_owner_pin')||'1234';
+let pinBuf='';
+let ownerUnlocked=false;
+document.getElementById('date').valueAsDate=new Date();
+
+const money=n=>'฿'+(Number(n)||0).toLocaleString('th-TH');
+const absDiff=n=>Math.abs(Number(n)||0);
+
+function makeMoneyInputs(cid,prefix){
+  const box=document.getElementById(cid);box.innerHTML='';
+  bills.forEach(b=>{
+    const r=document.createElement('div');r.className='money-row';
+    r.innerHTML=`<label>฿${b}</label><input id="${prefix}${b}" type="number" min="0" placeholder="จำนวน" oninput="calc()"><div class="pill" id="${prefix}${b}t">฿0</div>`;
+    box.appendChild(r);
+  });
+}
+makeMoneyInputs('openCash','o');makeMoneyInputs('closeCash','c');
+
+function renderStock(){
+  const box=document.getElementById('stockList');box.innerHTML='';
+  let last='';
+  products.forEach((p,i)=>{
+    if(p.cat!==last){
+      last=p.cat;
+      const c=document.createElement('div');c.className='cat';c.innerText=p.cat;box.appendChild(c);
+      const h=document.createElement('div');h.className='stock-head';
+      h.innerHTML='<div>สินค้า</div><div>ราคา</div><div>เริ่ม</div><div>เติม</div><div>ขาย</div><div>ฟรี</div><div>เหลือจริง</div><div>คาดว่าเหลือ</div>';
+      box.appendChild(h);
+    }
+    const r=document.createElement('div');r.className='stock-row';r.id='srow'+i;
+    r.innerHTML=`<div class="name-cell">${p.name}</div><div>฿${p.price}</div>
+      <input id="start${i}" type="number" placeholder="0" oninput="calc()">
+      <input id="add${i}" type="number" placeholder="0" oninput="calc()">
+      <input id="sold${i}" type="number" placeholder="0" oninput="calc()">
+      <input id="bad${i}" type="number" placeholder="0" oninput="calc()">
+      <input id="left${i}" type="number" placeholder="0" oninput="calc()">
+      <div class="expected-badge" id="exp${i}">-</div>`;
+    box.appendChild(r);
+  });
+}
+renderStock();
+
+function stockSummary(){
+  let sales=0,mismatch=0,issue=[],details=[];
+  products.forEach((p,i)=>{
+    const start=Number(document.getElementById('start'+i).value)||0;
+    const add=Number(document.getElementById('add'+i).value)||0;
+    const sold=Number(document.getElementById('sold'+i).value)||0;
+    const bad=Number(document.getElementById('bad'+i).value)||0;
+    const left=Number(document.getElementById('left'+i).value)||0;
+    const expected=start+add-sold-bad;
+    const has=start||add||sold||bad||left;
+    const eb=document.getElementById('exp'+i);
+    const row=document.getElementById('srow'+i);
+    if(has){
+      eb.innerText=expected;
+      if(left!==expected){eb.className='expected-badge expected-bad';row.className='stock-row mismatch-row';mismatch++;issue.push(p.name);details.push({name:p.name,price:p.price,start,add,sold,bad,left,expectedLeft:expected,diff:left-expected});}
+      else{eb.className='expected-badge expected-ok';row.className='stock-row';}
+    } else {eb.innerText='-';eb.className='expected-badge';row.className='stock-row';}
+    sales+=sold*p.price;
+  });
+  return{sales,mismatch,issue,details};
+}
+
+function total(prefix){
+  return bills.reduce((s,b)=>{
+    const qty=Number(document.getElementById(prefix+b).value)||0;
+    document.getElementById(prefix+b+'t').innerText=money(qty*b);
+    return s+qty*b;
+  },0);
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  calc();
+}
+
+
+// ── queue สำหรับหลายรูป ──
+// เก็บทั้ง File object และ objectURL ที่สร้างไว้แล้ว (สร้างครั้งเดียว)
+let imgQueue=[]; // [{file, url}]
+
+function previewImage(e){
+  const files=[...e.target.files];
+  files.forEach(f=>imgQueue.push({file:f, url:URL.createObjectURL(f)}));
+  e.target.value=''; // reset input ให้เลือกรูปซ้ำได้
+  renderImgQueue();
+}
+
+function renderImgQueue(){
+  const box=document.getElementById('imgQueue');
+  if(!box) return;
+  box.innerHTML=imgQueue.map((item,i)=>`
+    <div style="position:relative;display:inline-block">
+      <img src="${item.url}" style="height:60px;border-radius:8px;border:1px solid #444;object-fit:cover">
+      <button onclick="removeImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff5b5b;color:#fff;font-size:11px;padding:0;margin:0;line-height:1">×</button>
+    </div>`).join('');
+  document.getElementById('ocrStatus').innerText=
+    imgQueue.length ? `${imgQueue.length} รูปรอในคิว — กดปุ่ม "อ่านรูป"` : 'ยังไม่ได้เลือกรูป';
+}
+
+function removeImg(i){
+  URL.revokeObjectURL(imgQueue[i].url);
+  imgQueue.splice(i,1);
+  renderImgQueue();
+}
+
+async function readSmsImages(){
+  if(!imgQueue.length){alert('เลือกรูปก่อน');return;}
+  const statusEl=document.getElementById('ocrStatus');
+  const total=imgQueue.length;
+  let totalAdded=0;
+
+  for(let fi=0;fi<imgQueue.length;fi++){
+    statusEl.innerText=`รูปที่ ${fi+1}/${total}: กำลังประมวลผล...`;
+    const added=await ocrOneImage(imgQueue[fi].file, statusEl);
+    totalAdded+=added;
+  }
+
+  // revoke URLs และล้าง queue
+  imgQueue.forEach(item=>URL.revokeObjectURL(item.url));
+  imgQueue=[];
+  renderImgQueue();
+
+  const cnt=document.querySelectorAll('.transferAmount').length;
+  statusEl.innerText=`อ่านเสร็จ ${total} รูป — เพิ่มใหม่ ${totalAdded} รายการ / รวมสะสม ${cnt} รายการ ✅`;
+}
+
+async function ocrOneImage(file,statusEl){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const canvas=document.createElement('canvas');
+      const scale=2;
+      canvas.width=img.width*scale; canvas.height=img.height*scale;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      const id=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d=id.data;
+      for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];const v=g<160?0:255;d[i]=d[i+1]=d[i+2]=v;}
+      ctx.putImageData(id,0,0);
+      try{
+        const r=await Tesseract.recognize(canvas,'eng',{
+          logger:m=>{if(m.status&&statusEl)statusEl.innerText=`กำลังอ่าน: ${m.status} ${Math.round((m.progress||0)*100)}%`;},
+          tessedit_char_whitelist:'0123456789.:/@ '
+        });
+        const found=parseTextRaw(r.data.text, /*accumulate=*/true);
+        resolve(found);
+      }catch(e){resolve(0);}
+    };
+    img.onerror=()=>resolve(0);
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+// ── parse & dedup ──
+// key สำหรับ dedup: "เวลา|ยอด" — เวลาเดียวกันแต่ยอดต่าง = คนละรายการ
+function getExistingKeys(){
+  const keys=new Set();
+  document.querySelectorAll('#transferRows > div').forEach(row=>{
+    const t=row.querySelector('.transferTime')?.value||'';
+    const a=row.querySelector('.transferAmount')?.value||'';
+    if(t&&a) keys.add(t+'|'+a);
+  });
+  return keys;
+}
+
+// หา @HH:MM ทุกจุด → มองย้อนหลังหาตัวเลขทศนิยม .XX ล่าสุดก่อน @
+// accumulate=true → ไม่ล้าง transferRows เดิม, แค่เพิ่มที่ยังไม่มี
+function parseTextRaw(text, accumulate=false){
+  const newRows=[];
+  const seen=new Set(); // dedup ภายใน batch นี้
+  const reAt=/@(\d{2}:\d{2})/g;
+  let m;
+  while((m=reAt.exec(text))!==null){
+    const t=m[1];
+    if(Number(t.slice(0,2))>23||Number(t.slice(3))>59) continue;
+    const before=text.slice(0,m.index);
+    const decimals=[...before.matchAll(/\b([1-9]\d{1,4}\.\d{2})\b/g)];
+    if(!decimals.length) continue;
+    const a=Math.round(Number(decimals[decimals.length-1][1]));
+    if(a<5||a>9999) continue;
+    const key=t+'|'+a;
+    if(!seen.has(key)){seen.add(key);newRows.push({time:t,amount:a});}
+  }
+
+  if(!accumulate) document.getElementById('transferRows').innerHTML='';
+
+  // เอาเฉพาะรายการที่ยังไม่มีใน transferRows
+  const existing=getExistingKeys();
+  let added=0;
+  newRows.forEach(r=>{
+    const key=r.time+'|'+r.amount;
+    if(!existing.has(key)){
+      addTransferRow(r.time,r.amount,'');
+      existing.add(key); // ป้องกันซ้ำภายใน batch เดียวกัน
+      added++;
+    }
+  });
+
+  // อัปเดต counter
+  const cnt=document.querySelectorAll('.transferAmount').length;
+  const el=document.getElementById('transferCount');
+  if(el) el.innerText=cnt?`(${cnt} รายการ)`:'';
+  calc();
+  return added;
+}
+
+function parseText(){
+  const text=document.getElementById('ocrText').value||'';
+  const added=parseTextRaw(text,/*accumulate=*/true);
+  document.getElementById('ocrText').value=''; // ล้าง box หลังอ่าน
+  const s=document.getElementById('ocrStatus');
+  const cnt=document.querySelectorAll('.transferAmount').length;
+  s.innerText=added>0?`เพิ่ม ${added} รายการใหม่ — รวมสะสม ${cnt} รายการ ✅`:'ไม่พบยอดใหม่ (อาจซ้ำหรือไม่มี @HH:MM)';
+}
+
+function clearTransfers(){
+  if(!confirm('ล้างรายการโอนทั้งหมด?')) return;
+  document.getElementById('transferRows').innerHTML='';
+  const el=document.getElementById('transferCount');
+  if(el) el.innerText='';
+  document.getElementById('ocrStatus').innerText='ล้างแล้ว';
+  calc();
+}
+
+function addTransferRow(time='',amount='',note=''){
+  const box=document.getElementById('transferRows');
+  const r=document.createElement('div');r.className='list-row';
+  r.innerHTML=`<input class="transferTime" placeholder="เวลา" value="${time}" style="font-size:13px"><input class="transferNote" placeholder="หมายเหตุ" value="${note}"><input class="transferAmount" type="number" placeholder="บาท" value="${amount}" oninput="calc()"><button class="x" onclick="this.parentElement.remove();calc()">×</button>`;
+  box.appendChild(r);
+  const el=document.getElementById('transferCount');
+  if(el){const cnt=document.querySelectorAll('.transferAmount').length;el.innerText=cnt?`(${cnt} รายการ)`:'';} 
+  calc();
+}
+function transferTotal(){return[...document.querySelectorAll('.transferAmount')].reduce((s,e)=>s+(Number(e.value)||0),0);}
+
+let lastCalc={};
+function calc(){
+  const st=stockSummary();
+  const open=total('o'),close=total('c');
+  const cash=Number(document.getElementById('cashIncome').value)||0;
+  const transfer=transferTotal();
+  const expense=Number(document.getElementById('expense').value)||0;
+  const posGrand=Number(document.getElementById('posGrand').value)||0;
+  const posCash=Number(document.getElementById('posCash').value)||0;
+  const posTransfer=Number(document.getElementById('posTransfer').value)||0;
+  const expected=open+cash-expense;
+  const diff=close-expected;
+  const appGrand=cash+transfer;
+  const posDiff=appGrand-posGrand;
+  const stockDiff=st.sales-posGrand;
+
+  document.getElementById('openTotal').innerText=money(open);
+  document.getElementById('closeTotal').innerText=money(close);
+  document.getElementById('smsTotal').innerText=money(transfer);
+  document.getElementById('stockSales').innerText=money(st.sales);
+  document.getElementById('sStock').innerText=money(st.sales);
+  document.getElementById('sTransfer').innerText=money(transfer);
+  document.getElementById('sCash').innerText=money(cash);
+  document.getElementById('sPOS').innerText=money(posGrand);
+  document.getElementById('sOpen').innerText=money(open);
+  document.getElementById('sExpense').innerText=money(expense);
+  document.getElementById('sExpected').innerText=money(expected);
+  document.getElementById('sClose').innerText=money(close);
+  document.getElementById('sDiff').innerText=money(diff);
+  document.getElementById('sPosDiff').innerText=money(posDiff);
+  document.getElementById('sStockDiff').innerText=money(stockDiff);
+
+  // color summary items
+  const setAlert=(id,t)=>{document.getElementById(id).className='item'+(t==='ok'?' alert-ok':t==='warn'?' alert-warn':' alert-red');};
+  setAlert('item-cashdiff',diff===0?'ok':diff>0?'warn':'bad');
+  setAlert('item-posdiff',posDiff===0?'ok':'bad');
+  setAlert('item-stockdiff',stockDiff===0?'ok':'bad');
+
+  const status=document.getElementById('status');status.className='warn ';
+  if(st.mismatch>0){status.className+='bad';status.innerText='สต๊อกไม่ตรง '+st.mismatch+' รายการ ❌ '+st.issue.slice(0,3).join(', ');}
+  else if(appGrand===0&&st.sales===0){status.className+='ok';status.innerText='กรอกข้อมูลเพื่อสรุปผล';}
+  else if(diff===0&&posDiff===0&&stockDiff===0){status.className+='ok';status.innerText='ยอดตรงทุกส่วน ✅ ปิดกะได้';}
+  else if(diff<0||posDiff!==0||stockDiff!==0){status.className+='bad';status.innerText='ยอดไม่ตรง ❌ ตรวจ POS / สินค้า / เงินสด / ยอดโอน';}
+  else{status.className+='more';status.innerText='เงินสดเกิน ⚠️ กรุณาตรวจรายการ';}
+
+  lastCalc={stockSales:st.sales,stockMismatch:st.mismatch,stockIssues:st.details,open,close,cash,transfer,expense,expected,diff,posGrand,posCash,posTransfer,appGrand,posDiff,stockDiff,staff:document.getElementById('staff').value,date:document.getElementById('date').value};
+  return lastCalc;
+}
+
+function resetStock(){
+  if(confirm('ล้างจำนวนสินค้าในหน้านี้?'))products.forEach((p,i)=>['start','add','sold','bad','left'].forEach(k=>document.getElementById(k+i).value=''));
+  calc();
+}
+const GAS_URL='https://script.google.com/macros/s/AKfycbyBKVYjFivdnV33pM6a54zc60Ukgu-LyRR_6FsH3Z68KmH7u-N3QN8BN9mxPsVipHIxzQ/exec';
+
+async function saveShift(){
+  const t=calc();
+  const record={...t,createdAt:new Date().toLocaleString('th-TH')};
+  // บันทึก localStorage ก่อน (offline backup)
+  records.push(record);
+  localStorage.setItem('lucky_shift_stock_records',JSON.stringify(records));
+  renderHistory();
+
+  // ส่งขึ้น Google Sheets
+  const btn=document.querySelector('button[onclick="saveShift()"]');
+  if(btn){btn.innerText='กำลังบันทึกออนไลน์...';btn.disabled=true;}
+  try{
+    const res=await fetch(GAS_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'save',...record})
+    });
+    const json=await res.json();
+    if(json.ok){
+      alert('บันทึกเรียบร้อย ✅ ข้อมูลขึ้น Google Sheets แล้ว');
+    } else {
+      alert('บันทึก local แล้ว แต่ online ล้มเหลว: '+JSON.stringify(json));
+    }
+  }catch(e){
+    alert('บันทึก local แล้ว แต่ online ไม่ได้ (ตรวจ internet): '+e.message);
+  }finally{
+    if(btn){btn.innerText='บันทึกกะนี้';btn.disabled=false;}
+  }
+}
+
+async function loadOnlineHistory(){
+  const btn=document.getElementById('loadOnlineBtn');
+  if(btn){btn.innerText='กำลังโหลด...';btn.disabled=true;}
+  try{
+    const res=await fetch(GAS_URL+'?action=load');
+    const json=await res.json();
+    if(json.ok&&json.rows.length>1){
+      // แถวแรกคือ header ข้ามไป
+      const online=json.rows.slice(1).map(r=>({
+        date:r[0],staff:r[1],stockSales:r[2],cash:r[3],
+        transfer:r[4],expense:r[5],posGrand:r[6],posDiff:r[7],
+        stockDiff:r[8],diff:r[9],stockMismatch:r[10],
+        appGrand:r[11],createdAt:r[12]
+      }));
+      // รวมกับ local แล้ว dedup ด้วย createdAt
+      const allKeys=new Set(records.map(r=>r.createdAt));
+      online.forEach(r=>{if(!allKeys.has(r.createdAt))records.push(r);});
+      records.sort((a,b)=>a.createdAt>b.createdAt?1:-1);
+      localStorage.setItem('lucky_shift_stock_records',JSON.stringify(records));
+      renderHistory();
+      if(btn){btn.innerText='โหลดประวัติออนไลน์';btn.disabled=false;}
+    }
+  }catch(e){
+    alert('โหลดไม่ได้: '+e.message);
+    if(btn){btn.innerText='โหลดประวัติออนไลน์';btn.disabled=false;}
+  }
+}
+
+function renderHistory(){
+  const box=document.getElementById('history');
+  if(!records.length){box.innerText='ยังไม่มีข้อมูล';return;}
+  box.innerHTML=records.slice().reverse().map(r=>{
+    const ok=r.diff===0&&r.posDiff===0&&r.stockDiff===0&&r.stockMismatch===0;
+    const bad=r.diff!==0||r.posDiff!==0||r.stockDiff!==0||r.stockMismatch>0;
+    return`<div class="history-item">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>${r.date||'-'} • ${r.staff||'-'}</b><div class="small">${r.createdAt||''}</div></div>
+        <div class="${ok?'green':bad?'red':'orange'}" style="font-size:22px">${ok?'✅':bad?'❌':'⚠️'}</div>
+      </div>
+      <div class="history-badges">
+        <span class="badge ${r.stockDiff===0?'badge-ok':'badge-bad'}">สินค้า vs POS ${money(r.stockDiff)}</span>
+        <span class="badge ${r.posDiff===0?'badge-ok':'badge-bad'}">(สด+โอน) vs POS ${money(r.posDiff)}</span>
+        <span class="badge ${r.diff===0?'badge-ok':r.diff>0?'badge-warn':'badge-bad'}">เงินสดต่าง ${money(r.diff)}</span>
+        ${r.stockMismatch>0?`<span class="badge badge-bad">สต๊อก ${r.stockMismatch} รายการ</span>`:''}
+      </div></div>`;
+  }).join('');
+}
+function downloadCSV(){
+  const rows=[['Date','Staff','StockSales','CashIncome','TransferOCR','Expense','POSGrand','AppGrand','POSDiff','StockDiff','CashDiff','StockMismatch','CreatedAt']];
+  records.forEach(r=>rows.push([r.date,r.staff,r.stockSales,r.cash,r.transfer,r.expense,r.posGrand,r.appGrand,r.posDiff,r.stockDiff,r.diff,r.stockMismatch,r.createdAt]));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lucky-gym-shift.csv';a.click();
+}
+
+/* ── PIN ── */
+function openOwnerView(){
+  if(ownerUnlocked){renderOwnerView();return;}
+  pinBuf='';updatePinDots();
+  document.getElementById('pinError').innerText='';
+  document.getElementById('pinOverlay').style.display='flex';
+}
+function closePinOverlay(){document.getElementById('pinOverlay').style.display='none';}
+function pinPress(d){
+  if(pinBuf.length>=4)return;
+  pinBuf+=d;updatePinDots();
+  if(pinBuf.length===4){
+    if(pinBuf===ownerPin){
+      ownerUnlocked=true;
+      document.getElementById('pinOverlay').style.display='none';
+      renderOwnerView();
+    } else {
+      document.getElementById('pinError').innerText='PIN ไม่ถูกต้อง';
+      setTimeout(()=>{pinBuf='';updatePinDots();document.getElementById('pinError').innerText='';},900);
+    }
+  }
+}
+function pinClear(){pinBuf='';updatePinDots();}
+function updatePinDots(){for(let i=0;i<4;i++)document.getElementById('d'+i).className='pin-dot'+(i<pinBuf.length?' filled':'');}
+
+/* ── OWNER DIAGNOSTIC ── */
+function renderOwnerView(){
+  calc();
+  const d=lastCalc;
+
+  // Build diagnostic checks
+  const checks=[];
+
+  // Check 1: Stock sales vs POS grand
+  checks.push({
+    label:'ยอดขายสินค้า vs POS รวม',
+    a:d.stockSales, aLabel:'สินค้า', b:d.posGrand, bLabel:'POS รวม',
+    diff:d.stockDiff,
+    explain: d.stockDiff>0
+      ?`ยอดสินค้าสูงกว่า POS ${money(absDiff(d.stockDiff))} → พนักงานอาจขายของโดยไม่ตีผ่าน POS หรือกรอกจำนวนขายเกินจริง`
+      :d.stockDiff<0
+      ?`POS สูงกว่าสินค้า ${money(absDiff(d.stockDiff))} → พนักงานอาจกรอกจำนวนขายขาด หรือ POS บันทึกรายการที่ไม่ได้บันทึกสต๊อก`
+      :'ยอดตรงกัน ✅'
+  });
+
+  // Check 2: (Cash + Transfer) vs POS grand
+  checks.push({
+    label:'(เงินสด + โอน) vs POS รวม',
+    a:d.appGrand, aLabel:'สด+โอนจริง', b:d.posGrand, bLabel:'POS รวม',
+    diff:d.posDiff,
+    explain: d.posDiff>0
+      ?`รับจริงสูงกว่า POS ${money(absDiff(d.posDiff))} → อาจรับเงินแล้วไม่ตี POS หรือยอดโอน OCR ซ้ำซ้อน`
+      :d.posDiff<0
+      ?`POS สูงกว่ารับจริง ${money(absDiff(d.posDiff))} → พนักงานอาจกรอกเงินสดขาด หรือยอดโอนบางรายการหายไป`
+      :'ยอดตรงกัน ✅'
+  });
+
+  // Check 3: POS Cash vs actual cash income
+  if(d.posCash>0||d.cash>0){
+    const cd=d.cash-d.posCash;
+    checks.push({
+      label:'เงินสดจริง vs POS เงินสด',
+      a:d.cash, aLabel:'เงินสดจริง', b:d.posCash, bLabel:'POS เงินสด',
+      diff:cd,
+      explain: cd>0
+        ?`เงินสดจริงสูงกว่า POS ${money(absDiff(cd))} → รับเงินสดเกินที่ POS บันทึกไว้`
+        :cd<0
+        ?`เงินสดจริงน้อยกว่า POS ${money(absDiff(cd))} → เงินสดขาดหายหรือกรอก POS เกิน`
+        :'ยอดตรงกัน ✅'
+    });
+  }
+
+  // Check 4: Transfer OCR vs POS Transfer
+  if(d.posTransfer>0||d.transfer>0){
+    const td=d.transfer-d.posTransfer;
+    checks.push({
+      label:'ยอดโอน OCR vs POS โอน',
+      a:d.transfer, aLabel:'โอน OCR', b:d.posTransfer, bLabel:'POS โอน',
+      diff:td,
+      explain: td>0
+        ?`OCR มียอดโอนสูงกว่า POS ${money(absDiff(td))} → อาจมียอดโอนที่ยังไม่ได้ตี POS`
+        :td<0
+        ?`POS โอนสูงกว่า OCR ${money(absDiff(td))} → อาจอ่าน SMS ขาด หรือ POS นับซ้ำ`
+        :'ยอดตรงกัน ✅'
+    });
+  }
+
+  // Check 5: Cash close vs expected
+  checks.push({
+    label:'เงินสดนับจริง vs ที่ควรมี',
+    a:d.close, aLabel:'นับจริง', b:d.expected, bLabel:'ที่ควรมี',
+    diff:d.diff,
+    explain: d.diff>0
+      ?`เงินสดเกิน ${money(absDiff(d.diff))} → อาจบันทึกรายจ่ายขาด หรือได้รับเงินแล้วไม่บันทึก`
+      :d.diff<0
+      ?`เงินสดขาด ${money(absDiff(d.diff))} → เงินหาย หรือมีรายจ่ายที่ไม่ได้บันทึก`
+      :'ยอดตรงกัน ✅'
+  });
+
+  const stockIssues=d.stockIssues||[];
+  const allOk=checks.every(c=>c.diff===0)&&stockIssues.length===0;
+
+  let html=`<div class="card" style="border-color:#6633aa">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:20px;font-weight:900;color:#cc88ff">👑 รายงานเจ้าของ</div>
+        <div class="small">${d.date||'วันนี้'} · พนักงาน: <b style="color:#ddd">${d.staff||'(ไม่ระบุ)'}</b></div>
+      </div>
+      <div style="font-size:36px">${allOk?'✅':'❌'}</div>
+    </div>
+
+    <div class="diag-section">
+      <div class="diag-title">💰 ภาพรวมยอดเงิน</div>
+      <div class="flow-grid">
+        <div class="flow-box"><div class="flow-val ${d.stockDiff===0?'green':'orange'}">${money(d.stockSales)}</div><div class="flow-lbl">ยอดขายสินค้า</div></div>
+        <div class="flow-arrow" style="text-align:center">↔</div>
+        <div class="flow-box ${d.stockDiff!==0||d.posDiff!==0?'highlight':''}"><div class="flow-val ${(d.stockDiff===0&&d.posDiff===0)?'green':'red'}">${money(d.posGrand)}</div><div class="flow-lbl">POS รวม</div></div>
+        <div class="flow-arrow" style="text-align:center">↔</div>
+        <div class="flow-box ${d.posDiff!==0?'highlight':''}"><div class="flow-val ${d.posDiff===0?'green':'red'}">${money(d.appGrand)}</div><div class="flow-lbl">เงินสด + โอนจริง</div></div>
+      </div>
+    </div>
+
+    <div class="diag-section">
+      <div class="diag-title">🔍 ตรวจสอบทีละจุด</div>`;
+
+  checks.forEach(c=>{
+    const ok=c.diff===0;
+    const small=!ok&&absDiff(c.diff)<500;
+    const cls=ok?'diag-ok':small?'diag-warn':'diag-bad';
+    const icon=ok?'✅':small?'⚠️':'❌';
+    const diffColor=ok?'green':small?'orange':'red';
+    html+=`<div class="diag-row ${cls}">
+      <span class="diag-icon">${icon}</span>
+      <span class="diag-label">
+        <b>${c.label}</b><br>
+        <span class="small">${c.explain}</span>
+      </span>
+      <span class="diag-val">
+        <div style="font-size:11px;color:#666">${money(c.a)} / ${money(c.b)}</div>
+        <div class="${diffColor}" style="font-size:15px">${ok?'ตรง':money(c.diff)}</div>
+      </span>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Stock issue breakdown
+  if(stockIssues.length>0){
+    html+=`<div class="diag-section">
+      <div class="diag-title">📦 สินค้าสต๊อกไม่ตรง — ${stockIssues.length} รายการ</div>
+      <div class="stock-issue-list">`;
+    stockIssues.forEach(s=>{
+      html+=`<div class="stock-issue-item">
+        <div><div class="si-name">${s.name}</div><div class="si-label">฿${s.price}/ชิ้น</div></div>
+        <div><div class="si-label">ขาย</div><div class="si-val">${s.sold} ชิ้น = ${money(s.sold*s.price)}</div></div>
+        <div><div class="si-label">เหลือจริง / คาด</div><div class="si-val ${s.diff!==0?'red':''}">${s.left} / ${s.expectedLeft} <span style="color:#888">(${s.diff>0?'+':''}${s.diff})</span></div></div>
+        <div><div class="si-label">เริ่ม / เติม / ฟรี</div><div class="si-val">${s.start} / ${s.add} / ${s.bad}</div></div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  // Insight boxes
+  html+=`<div class="diag-section"><div class="diag-title">💡 สรุปสำหรับเจ้าของ</div>`;
+  if(allOk){
+    html+=`<div class="insight-box insight-ok">
+      <div class="insight-title green">✅ ยอดตรงทุกส่วน — ปิดกะได้</div>
+      <div class="insight-body" style="color:#aaa">ไม่พบความผิดปกติ ยอดสินค้า POS เงินสด และโอนตรงกันทั้งหมด</div>
+    </div>`;
+  } else {
+    const bigIssues=checks.filter(c=>c.diff!==0&&absDiff(c.diff)>=500);
+    const smallIssues=checks.filter(c=>c.diff!==0&&absDiff(c.diff)<500);
+    if(bigIssues.length){
+      html+=`<div class="insight-box insight-red">
+        <div class="insight-title red">❌ พบความผิดปกติหลัก — ควรตรวจทันที</div>
+        <ul class="insight-body">`;
+      bigIssues.forEach(c=>{html+=`<li>${c.label}: ${c.explain}</li>`;});
+      html+=`</ul></div>`;
+    }
+    if(stockIssues.length){
+      html+=`<div class="insight-box insight-red">
+        <div class="insight-title red">❌ สต๊อกสินค้าไม่ตรง ${stockIssues.length} รายการ</div>
+        <ul class="insight-body">`;
+      stockIssues.slice(0,6).forEach(s=>{html+=`<li>${s.name}: เหลือจริง ${s.left} แต่คาด ${s.expectedLeft} (ต่าง ${s.diff>0?'+':''}${s.diff} ชิ้น)</li>`;});
+      if(stockIssues.length>6)html+=`<li>และอีก ${stockIssues.length-6} รายการ...</li>`;
+      html+=`</ul></div>`;
+    }
+    if(smallIssues.length){
+      html+=`<div class="insight-box insight-warn">
+        <div class="insight-title orange">⚠️ ความต่างเล็กน้อย (น้อยกว่า ฿500)</div>
+        <ul class="insight-body">`;
+      smallIssues.forEach(c=>{html+=`<li>${c.label}: ${c.explain}</li>`;});
+      html+=`</ul></div>`;
+    }
+  }
+  html+=`</div>`;
+
+  // PIN change
+  html+=`<div class="diag-section">
+    <div class="diag-title">🔐 เปลี่ยน PIN เจ้าของ</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px"><label>PIN ใหม่ (4 หลัก)</label><input type="password" id="newPin" maxlength="4" placeholder="····" style="letter-spacing:8px;font-size:20px"></div>
+      <div style="flex:1;min-width:120px"><label>ยืนยัน PIN</label><input type="password" id="confirmPin" maxlength="4" placeholder="····" style="letter-spacing:8px;font-size:20px"></div>
+      <div><button class="owner-btn" onclick="changePin()" style="width:auto;padding:11px 18px;margin-top:0">บันทึก PIN</button></div>
+    </div>
+    <div id="pinMsg" class="small" style="margin-top:6px"></div>
+  </div>`;
+
+  // Full history (owner view)
+  html+=`<div class="diag-section">
+    <div class="diag-title">📋 ประวัติกะทั้งหมด</div>`;
+  if(!records.length){html+=`<div class="small" style="padding:12px 0">ยังไม่มีข้อมูล</div>`;}
+  else{
+    records.slice().reverse().forEach(r=>{
+      const ok=r.diff===0&&r.posDiff===0&&r.stockDiff===0&&r.stockMismatch===0;
+      const bad=r.diff!==0||r.posDiff!==0||r.stockDiff!==0||r.stockMismatch>0;
+      html+=`<div class="history-item">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><b>${r.date||'-'} • ${r.staff||'-'}</b><div class="small">${r.createdAt||''}</div></div>
+          <div class="${ok?'green':bad?'red':'orange'}" style="font-size:20px">${ok?'✅':bad?'❌':'⚠️'}</div>
+        </div>
+        <div class="history-badges">
+          <span class="badge ${r.stockDiff===0?'badge-ok':'badge-bad'}">สินค้า vs POS ${money(r.stockDiff)}</span>
+          <span class="badge ${r.posDiff===0?'badge-ok':'badge-bad'}">(สด+โอน) vs POS ${money(r.posDiff)}</span>
+          <span class="badge ${r.diff===0?'badge-ok':r.diff>0?'badge-warn':'badge-bad'}">เงินสดต่าง ${money(r.diff)}</span>
+          ${r.stockMismatch>0?`<span class="badge badge-bad">สต๊อก ${r.stockMismatch} รายการ</span>`:''}
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div></div>`;
+
+  document.getElementById('ownerContent').innerHTML=html;
+  showTab('owner',null);
+  document.querySelectorAll('.tab')[5].classList.add('active');
+}
+
+function changePin(){
+  const np=document.getElementById('newPin').value;
+  const cp=document.getElementById('confirmPin').value;
+  const msg=document.getElementById('pinMsg');
+  if(!/^\d{4}$/.test(np)){msg.style.color='#ff5b5b';msg.innerText='PIN ต้องเป็นตัวเลข 4 หลัก';return;}
+  if(np!==cp){msg.style.color='#ff5b5b';msg.innerText='PIN ไม่ตรงกัน';return;}
+  ownerPin=np;localStorage.setItem('lucky_owner_pin',np);
+  msg.style.color='#BBDF32';msg.innerText='✅ เปลี่ยน PIN เรียบร้อย';
+  document.getElementById('newPin').value='';document.getElementById('confirmPin').value='';
+}
+
+renderHistory();calc();
+</script>
+</body>
+</html>
