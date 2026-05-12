@@ -42,12 +42,25 @@
     .warn{padding:14px;border-radius:16px;margin-top:10px;font-weight:800;text-align:center}
     .ok{background:#263b13;color:#dfff8c}.bad{background:#451414;color:#ffd0d0}.more{background:#122c45;color:#d0e8ff}
     img.preview{max-width:100%;border-radius:14px;border:1px solid #333;margin-top:8px}
-    .stock-head,.stock-row{display:grid;grid-template-columns:1.5fr 55px 55px 55px 55px 55px 75px 75px;gap:5px;align-items:center}
-    .stock-head{font-size:11px;color:#aaa;margin-bottom:6px}
-    .stock-row{margin-bottom:5px}
-    .stock-row input{padding:8px;font-size:13px}
-    .stock-row.mismatch-row{background:#1a0808;border-radius:10px;padding:2px 4px}
-    .stock-row.mismatch-row input{border-color:#ff5b5b55}
+    /* stock card layout สำหรับมือถือ */
+    .stock-cat-title{background:#1a2a08;border:1px solid #3a5a10;border-radius:12px;padding:10px 14px;margin:14px 0 8px;font-weight:800;font-size:14px;color:#BBDF32;letter-spacing:.04em}
+    .stock-card{background:#111;border:1px solid #252525;border-radius:14px;padding:12px 14px;margin-bottom:8px}
+    .stock-card.mismatch-row{background:#1a0808;border-color:#ff5b5b55}
+    .stock-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .stock-card-name{font-size:15px;font-weight:700;color:#fff}
+    .stock-card-price{font-size:13px;color:#888;background:#1a1a1a;padding:3px 10px;border-radius:20px}
+    .stock-inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .stock-input-wrap{display:flex;flex-direction:column;gap:4px}
+    .stock-input-label{font-size:11px;font-weight:700;text-align:center;padding:3px 0;border-radius:6px}
+    .lbl-start{background:#1a2a3a;color:#5ba8ff}
+    .lbl-add{background:#1a2a1a;color:#88cc44}
+    .lbl-sell{background:#2a1a0a;color:#ffaa33}
+    .lbl-free{background:#1a1a2a;color:#cc88ff}
+    .lbl-left{background:#0a1a0a;color:#BBDF32}
+    .lbl-exp{background:#1a1a1a;color:#888}
+    .stock-input-wrap input{width:100%;padding:10px 6px;font-size:16px;font-weight:700;text-align:center;border:1px solid #333;border-radius:10px;background:#050505;color:white}
+    .stock-input-wrap input:focus{border-color:#BBDF32;outline:none;background:#0a0f00}
+    .stock-expected{display:flex;justify-content:center;align-items:center;height:44px;border-radius:10px;font-size:16px;font-weight:700;border:1px solid #333;background:#0a0a0a}
     .expected-badge{font-size:12px;border-radius:8px;padding:4px 6px;text-align:center;font-weight:700}
     .expected-ok{background:#1a3a08;color:#BBDF32}
     .expected-bad{background:#3a0808;color:#ff8888}
@@ -99,9 +112,7 @@
       .summary,.grid,.grid3{grid-template-columns:1fr}
       .tabs{grid-template-columns:repeat(3,1fr)}
       .list-row{grid-template-columns:1fr 1fr}
-      .stock-head{display:none}
-      .stock-row{grid-template-columns:1fr 55px 55px 55px}
-      .stock-row .name-cell{grid-column:1/5}
+
       .x{height:43px}
       .flow-grid{grid-template-columns:1fr}
       .flow-arrow{display:none}
@@ -298,26 +309,49 @@ function makeMoneyInputs(cid,prefix){
 makeMoneyInputs('openCash','o');makeMoneyInputs('closeCash','c');
 
 function renderStock(){
-  const box=document.getElementById('stockList');box.innerHTML='';
-  let last='';
-  products.forEach((p,i)=>{
-    if(p.cat!==last){
-      last=p.cat;
-      const c=document.createElement('div');c.className='cat';c.innerText=p.cat;box.appendChild(c);
-      const h=document.createElement('div');h.className='stock-head';
-      h.innerHTML='<div>สินค้า</div><div>ราคา</div><div>เริ่ม</div><div>เติม</div><div>ขาย</div><div>ฟรี</div><div>เหลือจริง</div><div>คาดว่าเหลือ</div>';
-      box.appendChild(h);
-    }
-    const r=document.createElement('div');r.className='stock-row';r.id='srow'+i;
-    r.innerHTML=`<div class="name-cell">${p.name}</div><div>฿${p.price}</div>
-      <input id="start${i}" type="number" placeholder="0" oninput="calc()">
-      <input id="add${i}" type="number" placeholder="0" oninput="calc()">
-      <input id="sold${i}" type="number" placeholder="0" oninput="calc()">
-      <input id="bad${i}" type="number" placeholder="0" oninput="calc()">
-      <input id="left${i}" type="number" placeholder="0" oninput="calc()">
-      <div class="expected-badge" id="exp${i}">-</div>`;
-    box.appendChild(r);
+  const box=document.getElementById('stockList');
+  const cats=[...new Set(products.map(p=>p.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    html+=`<div class="stock-cat-title">📦 ${cat}</div>`;
+    products.forEach((p,i)=>{
+      if(p.cat!==cat) return;
+      html+=`
+      <div class="stock-card" id="srow${i}">
+        <div class="stock-card-header">
+          <span class="stock-card-name">${p.name}</span>
+          <span class="stock-card-price">฿${p.price}</span>
+        </div>
+        <div class="stock-inputs">
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-start">🔵 เริ่ม</div>
+            <input id="start${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+          </div>
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-add">🟢 เติม</div>
+            <input id="add${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+          </div>
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-sell">🟠 ขาย</div>
+            <input id="sold${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+          </div>
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-free">🟣 ฟรี</div>
+            <input id="bad${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+          </div>
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-left">🟡 เหลือจริง</div>
+            <input id="left${i}" type="number" inputmode="numeric" placeholder="0" oninput="calc()">
+          </div>
+          <div class="stock-input-wrap">
+            <div class="stock-input-label lbl-exp">คาดว่าเหลือ</div>
+            <div class="stock-expected" id="exp${i}">-</div>
+          </div>
+        </div>
+      </div>`;
+    });
   });
+  box.innerHTML=html;
 }
 renderStock();
 
@@ -335,9 +369,9 @@ function stockSummary(){
     const row=document.getElementById('srow'+i);
     if(has){
       eb.innerText=expected;
-      if(left!==expected){eb.className='expected-badge expected-bad';row.className='stock-row mismatch-row';mismatch++;issue.push(p.name);details.push({name:p.name,price:p.price,start,add,sold,bad,left,expectedLeft:expected,diff:left-expected});}
-      else{eb.className='expected-badge expected-ok';row.className='stock-row';}
-    } else {eb.innerText='-';eb.className='expected-badge';row.className='stock-row';}
+      if(left!==expected){eb.className='expected-badge expected-bad';row.className='stock-card mismatch-row';mismatch++;issue.push(p.name);details.push({name:p.name,price:p.price,start,add,sold,bad,left,expectedLeft:expected,diff:left-expected});}
+      else{eb.className='expected-badge expected-ok';row.className='stock-card';}
+    } else {eb.innerText='-';eb.className='expected-badge';row.className='stock-card';}
     sales+=sold*p.price;
   });
   return{sales,mismatch,issue,details};
