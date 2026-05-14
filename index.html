@@ -243,12 +243,18 @@ textarea{min-height:80px;font-size:13px;resize:vertical}
   </div>
 
   <div class="card">
-    <div class="card-title">💵 เงินสด / รายจ่าย</div>
-    <div class="g2" style="margin-bottom:8px">
-      <div><label>เงินสดรับจริง</label><input id="iCash" type="number" inputmode="numeric" oninput="calc();saveDraft()" placeholder="0"/></div>
-      <div><label>รายจ่ายเงินสด</label><input id="iExpense" type="number" inputmode="numeric" oninput="calc();saveDraft()" placeholder="0"/></div>
+    <div class="card-title">💵 เงินสดรับจริง</div>
+    <div><label>เงินสดรับจริง</label><input id="iCash" type="number" inputmode="numeric" oninput="calc();saveDraft()" placeholder="0"/></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      🧾 รายจ่าย
+      <button class="btn btn-sec btn-sm" onclick="addExpense()" style="margin:0">+ เพิ่ม</button>
     </div>
-    <div><label>หมายเหตุรายจ่าย</label><input id="iExpNote" type="text" placeholder="เช่น ค่าน้ำ ค่าไฟ..." oninput="saveDraft()"/></div>
+    <div class="hint" style="margin-bottom:8px">กดเพิ่มทีละรายการ เช่น ค่าน้ำ ค่าไฟ ค่าของ</div>
+    <div id="expenseRows"></div>
+    <div class="pill"><div class="pill-lbl">รวมรายจ่าย</div><div class="pill-num" id="pExpTotal" style="color:#ff8888">฿0</div></div>
   </div>
 </div>
 
@@ -630,6 +636,51 @@ function askRemoveSale(id){
 }
 
 // ── Transfer rows ──
+// ── Expense rows ──
+function addExpense(note='',amount=''){
+  const box=document.getElementById('expenseRows');if(!box)return;
+  const r=document.createElement('div');r.className='tr-row';
+  r.innerHTML=`
+    <div style="display:flex;gap:6px;align-items:center">
+      <input class="exp-note" type="text" value="${note}" placeholder="รายการ เช่น ค่าน้ำ" style="font-size:13px;flex:1" oninput="calcExpenses();saveExpDraft()">
+      <input class="exp-amount" type="number" inputmode="numeric" value="${amount}" placeholder="฿" style="width:100px;text-align:center;font-size:16px;font-weight:700" oninput="calcExpenses();saveExpDraft()">
+      <button class="btn btn-red" onclick="this.closest('.tr-row').remove();calcExpenses();saveExpDraft()" style="width:38px;height:38px;padding:0;margin:0;font-size:16px;border-radius:9px;flex-shrink:0">×</button>
+    </div>`;
+  box.appendChild(r);calcExpenses();
+}
+
+function calcExpenses(){
+  const total=[...document.querySelectorAll('.exp-amount')].reduce((s,e)=>s+(Number(e.value)||0),0);
+  const el=document.getElementById('pExpTotal');if(el)el.innerText=money(total);
+  // sync ไปยัง iExpense hidden field เพื่อให้ calc() ใช้ได้
+  let hidden=document.getElementById('iExpense');
+  if(!hidden){hidden=document.createElement('input');hidden.type='hidden';hidden.id='iExpense';document.body.appendChild(hidden);}
+  hidden.value=total;
+  calc();
+  return total;
+}
+
+function getExpensesData(){
+  const rows=[];
+  document.querySelectorAll('#expenseRows .tr-row').forEach(r=>{
+    const note=r.querySelector('.exp-note')?.value||'';
+    const amount=Number(r.querySelector('.exp-amount')?.value)||0;
+    if(note||amount)rows.push({note,amount});
+  });
+  return rows;
+}
+
+function saveExpDraft(){
+  localStorage.setItem('lucky_exp_draft',JSON.stringify(getExpensesData()));
+}
+
+function loadExpDraft(){
+  try{
+    const rows=JSON.parse(localStorage.getItem('lucky_exp_draft')||'[]');
+    rows.forEach(r=>addExpense(r.note,r.amount));
+  }catch(e){}
+}
+
 function trTotal(){return[...document.querySelectorAll('.tamount')].reduce((s,e)=>s+(Number(e.value)||0),0);}
 
 function getExKeys(){
@@ -824,7 +875,7 @@ function calc(){
     open,close,cash,transfer,expense,expected,diff,
     posGrand,posCash,posTransfer,appGrand,posDiff,stockDiff,
     salesData:[...getSalesData(),...getServicesData()],salesTotal,
-    expenseNote:$('iExpNote')?.value||'',bag,
+    expenseNote:getExpensesData().map(e=>e.note+(e.amount?'(฿'+e.amount+')':'')).join(', '),bag,
     staff:$('iStaff')?.value||'',
     date:$('iDate')?.value||''
   };
@@ -864,7 +915,7 @@ function buildSalesDraft(){
 }
 
 function clearDraft(){
-  ['lucky_draft','lucky_sales_draft'].forEach(k=>localStorage.removeItem(k));
+  ['lucky_draft','lucky_sales_draft','lucky_exp_draft'].forEach(k=>localStorage.removeItem(k));
 }
 
 // ── Prev left ──
@@ -910,6 +961,7 @@ function askClear(target){
       products.forEach((p,i)=>['st','ad','sl','fr','lf'].forEach(k=>{const e=$(k+i);if(e)e.value='';}));
       $('transferRows').innerHTML='';
       $('salesRows').innerHTML='';
+      $('expenseRows').innerHTML='';calcExpenses();
       BILLS.forEach(b=>['o','c'].forEach(p=>{const e=$(`${p}${b}`);if(e)e.value='';}));
       ['iCash','iExpense','iExpNote','iPosCash','iPosTransfer','iPosGrand'].forEach(k=>{const e=$(k);if(e)e.value='';});
       clearDraft();calc();updateTrCount();
@@ -1018,7 +1070,7 @@ async function saveShift(){
       method:'POST',
       body:JSON.stringify({
         action:'save',...rec,
-        salesDataStr:JSON.stringify(rec.salesData||[]),
+        salesDataStr:JSON.stringify(rec.salesData||[]),expensesDataStr:JSON.stringify(getExpensesData()),
         warehouse:JSON.stringify(warehouse),
         prevClose:localStorage.getItem('lucky_prev_close')||'',
         prevLeft:localStorage.getItem('lucky_prev_left')||''
